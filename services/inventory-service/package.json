@@ -1,0 +1,15 @@
+{
+  "name": "@exclusive/inventory-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch-path=src --watch-path=../../packages/common/src src/index.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@exclusive/common": "1.0.0",
+    "@exclusive/db": "1.0.0",
+    "express": "^5.1.0"
+  }
+}
