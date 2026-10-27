@@ -1,0 +1,19 @@
+{
+  "name": "@exclusive/sales-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch-path=src --watch-path=../../packages/common/src src/index.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@exclusive/common": "1.0.0",
+    "@exclusive/db": "1.0.0",
+    "express": "^5.1.0",
+    "file-type": "^21.0.0",
+    "multer": "^2.0.2",
+    "pdfkit": "^0.17.2",
+    "sharp": "^0.34.4"
+  }
+}
