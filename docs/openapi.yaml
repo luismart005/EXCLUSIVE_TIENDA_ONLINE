@@ -1,0 +1,4184 @@
+openapi: 3.0.3
+info:
+  title: Exclusive — API de comercio electrónico
+  version: 1.0.0
+  description: |-
+    API del sistema web de comercio electrónico y gestión de ventas de ropa **Exclusive** (proyecto académico, Universidad Mariano Gálvez de Guatemala).
+
+    Todas las rutas pasan por el **API Gateway** (`:4000`), que las enruta a cinco microservicios: auth, catalog, inventory, sales y analytics.
+
+    **Seguridad:** OAuth 2.0 + OpenID Connect (Authorization Code con PKCE). El proveedor está en `/oidc` y su configuración en `/oidc/.well-known/openid-configuration`. Las rutas protegidas reciben un token de acceso JWT (RS256) en `Authorization: Bearer <token>`; cada servicio lo valida con las llaves públicas (JWKS) y comprueba los permisos del rol en la base de datos.
+
+    Para probar desde esta página: inicia sesión en el sistema, abre las herramientas de desarrollador (F12) → Application (Aplicación) → Session Storage → `http://localhost:4000`, abre la clave que empieza con `oidc.user:`, copia el valor del campo `access_token` y pégalo en **Authorize**.
+
+    **Montos:** decimales en quetzales (GTQ) como texto (`"129.00"`). **Pagos, facturación y envíos simulados — sin validez fiscal.**
+servers:
+  - url: /
+    description: Gateway actual
+  - url: http://localhost:4000
+    description: Local
+tags:
+  - name: Sistema
+  - name: Catálogo público
+  - name: Cuenta
+  - name: Buzón de pruebas
+  - name: Carrito y compra
+  - name: Mis pedidos
+  - name: Pedidos y pagos
+  - name: Entregas
+  - name: Posventa
+  - name: Promociones
+  - name: Catálogo (administración)
+  - name: Configuración
+  - name: Inventario
+  - name: Compras a proveedores
+  - name: Reportes
+  - name: Auditoría
+  - name: Inteligencia artificial
+  - name: Usuarios y roles
+paths:
+  /api/health:
+    get:
+      tags:
+        - Sistema
+      summary: Estado del gateway y de cada microservicio (incluye conexión a PostgreSQL)
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/catalog/products:
+    get:
+      tags:
+        - Catálogo público
+      summary: Listado paginado de productos activos con filtros
+      description: Público.
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: gender
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: maxPrice
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: color
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: onSale
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: inStock
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: featured
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - relevancia
+              - nuevos
+              - precio-asc
+              - precio-desc
+              - nombre
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/catalog/products/{slug}:
+    get:
+      tags:
+        - Catálogo público
+      summary: "Detalle de producto: variantes, existencias disponibles, imágenes por color y relacionados"
+      description: Público.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/catalog/categories:
+    get:
+      tags:
+        - Catálogo público
+      summary: Categorías activas
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/catalog/filters:
+    get:
+      tags:
+        - Catálogo público
+      summary: Valores disponibles para los filtros (tallas, colores, rango de precios)
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/catalog/variants:
+    get:
+      tags:
+        - Catálogo público
+      summary: Variantes activas de un producto (usado para cambios de talla o color)
+      description: Público.
+      parameters:
+        - name: productId
+          in: query
+          required: false
+          schema:
+            type: integer
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/catalog/promotions/active:
+    get:
+      tags:
+        - Catálogo público
+      summary: Promociones vigentes
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/catalog/store:
+    get:
+      tags:
+        - Catálogo público
+      summary: Datos públicos de la tienda (contacto, horario, aviso de simulación)
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/catalog/policies/{slug}:
+    get:
+      tags:
+        - Catálogo público
+      summary: Versión vigente de una política (términos, privacidad, envíos, cambios)
+      description: Público.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/catalog/colors:
+    get:
+      tags:
+        - Catálogo público
+      summary: Colores
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/catalog/sizes:
+    get:
+      tags:
+        - Catálogo público
+      summary: Tallas
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/auth/register:
+    post:
+      tags:
+        - Cuenta
+      summary: Registro de cliente
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                phone:
+                  type: string
+                acceptTerms:
+                  type: boolean
+              required:
+                - email
+                - password
+                - firstName
+                - lastName
+                - acceptTerms
+  /api/auth/password/forgot:
+    post:
+      tags:
+        - Cuenta
+      summary: Solicitar enlace de recuperación (respuesta idéntica exista o no la cuenta)
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+              required:
+                - email
+  /api/auth/password/reset:
+    post:
+      tags:
+        - Cuenta
+      summary: Restablecer contraseña con el token recibido en el buzón de pruebas
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+              required:
+                - token
+                - password
+  /api/auth/departments:
+    get:
+      tags:
+        - Cuenta
+      summary: Departamentos de Guatemala con cobertura
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/auth/me:
+    get:
+      tags:
+        - Cuenta
+      summary: Perfil, roles y permisos efectivos del usuario autenticado
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      tags:
+        - Cuenta
+      summary: Actualizar datos personales
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                phone:
+                  type: string
+              required:
+                - firstName
+                - lastName
+  /api/auth/me/password:
+    post:
+      tags:
+        - Cuenta
+      summary: Cambiar contraseña (revoca las demás sesiones)
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+              required:
+                - currentPassword
+                - newPassword
+  /api/auth/me/logout-all:
+    post:
+      tags:
+        - Cuenta
+      summary: Cerrar sesión en todos los dispositivos
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/auth/me/addresses:
+    get:
+      tags:
+        - Cuenta
+      summary: Direcciones de entrega
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Cuenta
+      summary: Agregar dirección
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+                recipientName:
+                  type: string
+                phone:
+                  type: string
+                department:
+                  type: string
+                municipality:
+                  type: string
+                line1:
+                  type: string
+                reference:
+                  type: string
+                isDefault:
+                  type: boolean
+              required:
+                - label
+                - recipientName
+                - phone
+                - department
+                - municipality
+                - line1
+  /api/auth/me/addresses/{id}:
+    put:
+      tags:
+        - Cuenta
+      summary: Editar dirección
+      description: Requiere sesión iniciada (cualquier rol).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags:
+        - Cuenta
+      summary: Eliminar dirección
+      description: Requiere sesión iniciada (cualquier rol).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/auth/me/notifications:
+    get:
+      tags:
+        - Cuenta
+      summary: Notificaciones del usuario
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/auth/me/notifications/{id}/read:
+    post:
+      tags:
+        - Cuenta
+      summary: Marcar notificación como leída
+      description: Requiere sesión iniciada (cualquier rol).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/auth/me/notifications/read-all:
+    post:
+      tags:
+        - Cuenta
+      summary: Marcar todas como leídas
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/auth/mailbox:
+    get:
+      tags:
+        - Buzón de pruebas
+      summary: Correos simulados enviados por el sistema
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/auth/mailbox/{id}:
+    get:
+      tags:
+        - Buzón de pruebas
+      summary: Contenido de un correo simulado
+      description: Público.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/sales/cart/preview:
+    post:
+      tags:
+        - Carrito y compra
+      summary: Cotizar un carrito de invitado (precios calculados en el servidor)
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      variantId:
+                        type: integer
+                      quantity:
+                        type: integer
+                couponCode:
+                  type: string
+                department:
+                  type: string
+              required:
+                - items
+  /api/sales/cart:
+    get:
+      tags:
+        - Carrito y compra
+      summary: Carrito persistente del cliente con cotización
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags:
+        - Carrito y compra
+      summary: Vaciar carrito
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales/cart/items:
+    post:
+      tags:
+        - Carrito y compra
+      summary: Agregar una variante al carrito
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                variantId:
+                  type: integer
+                quantity:
+                  type: integer
+              required:
+                - variantId
+                - quantity
+  /api/sales/cart/items/{variantId}:
+    put:
+      tags:
+        - Carrito y compra
+      summary: Cambiar cantidad (0 elimina)
+      description: Requiere sesión iniciada (cualquier rol).
+      parameters:
+        - name: variantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+              required:
+                - quantity
+  /api/sales/cart/merge:
+    post:
+      tags:
+        - Carrito y compra
+      summary: Unir el carrito de invitado al iniciar sesión
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      variantId:
+                        type: integer
+                      quantity:
+                        type: integer
+              required:
+                - items
+  /api/sales/shipping/zones:
+    get:
+      tags:
+        - Carrito y compra
+      summary: Cobertura y tarifas de envío por departamento
+      description: Público.
+      security: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/sales/checkout/quote:
+    post:
+      tags:
+        - Carrito y compra
+      summary: Cotización final con dirección, cupón y términos vigentes
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                addressId:
+                  type: integer
+                couponCode:
+                  type: string
+  /api/sales/checkout/confirm:
+    post:
+      tags:
+        - Carrito y compra
+      summary: "Confirmar la compra: crea el pedido y reserva existencias (idempotente)"
+      description: Requiere sesión iniciada (cualquier rol).
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKeyRequired"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                addressId:
+                  type: integer
+                paymentMethod:
+                  type: string
+                  enum:
+                    - TARJETA
+                    - TRANSFERENCIA
+                    - CONTRA_ENTREGA
+                couponCode:
+                  type: string
+                acceptTerms:
+                  type: boolean
+                termsVersion:
+                  type: integer
+                note:
+                  type: string
+              required:
+                - addressId
+                - paymentMethod
+                - acceptTerms
+                - termsVersion
+  /api/sales/orders:
+    get:
+      tags:
+        - Mis pedidos
+      summary: Pedidos del cliente autenticado
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales/orders/{code}:
+    get:
+      tags:
+        - Mis pedidos
+      summary: "Detalle del pedido: estados, pagos, envío, historial y comprobantes"
+      description: Requiere sesión iniciada (cualquier rol).
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/sales/orders/{code}/payments/card:
+    post:
+      tags:
+        - Mis pedidos
+      summary: Pago con tarjeta simulado (4242… aprobado, …0002 rechazado, …9995 pendiente)
+      description: Requiere sesión iniciada (cualquier rol).
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/IdempotencyKey"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cardNumber:
+                  type: string
+                holder:
+                  type: string
+                expMonth:
+                  type: integer
+                expYear:
+                  type: integer
+                cvv:
+                  type: string
+              required:
+                - cardNumber
+                - holder
+                - expMonth
+                - expYear
+                - cvv
+  /api/sales/orders/{code}/payments/transfer:
+    post:
+      tags:
+        - Mis pedidos
+      summary: Subir comprobante de transferencia (JPG, PNG, WebP o PDF; máx. 5 MB)
+      description: Requiere sesión iniciada (cualquier rol).
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                receipt:
+                  type: string
+                  format: binary
+                bankReference:
+                  type: string
+              required:
+                - receipt
+  /api/sales/orders/{code}/cancel:
+    post:
+      tags:
+        - Mis pedidos
+      summary: Cancelar pedido antes de la preparación
+      description: Requiere sesión iniciada (cualquier rol).
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+  /api/sales/orders/{code}/post-sale:
+    post:
+      tags:
+        - Mis pedidos
+      summary: Solicitar cambio, devolución o reclamo
+      description: Requiere sesión iniciada (cualquier rol).
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - CAMBIO
+                    - DEVOLUCION
+                    - RECLAMO
+                reason:
+                  type: string
+                description:
+                  type: string
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      orderItemId:
+                        type: integer
+                      quantity:
+                        type: integer
+                desiredVariantId:
+                  type: integer
+              required:
+                - type
+                - reason
+                - description
+                - items
+  /api/sales/post-sale:
+    get:
+      tags:
+        - Mis pedidos
+      summary: Solicitudes de posventa del cliente
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales/payments/{id}/receipt:
+    get:
+      tags:
+        - Mis pedidos
+      summary: Ver comprobante de transferencia (solo dueño o personal autorizado)
+      description: Requiere sesión iniciada (cualquier rol).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/sales/documents/{number}/pdf:
+    get:
+      tags:
+        - Mis pedidos
+      summary: Comprobante de venta simulado en PDF (sin validez fiscal)
+      description: Requiere sesión iniciada (cualquier rol).
+      parameters:
+        - name: number
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/sales/notifications/summary:
+    get:
+      tags:
+        - Mis pedidos
+      summary: Contadores para el encabezado
+      description: Requiere sesión iniciada (cualquier rol).
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales/admin/summary:
+    get:
+      tags:
+        - Pedidos y pagos
+      summary: Colas de trabajo (pagos por revisar, por preparar, por despachar…)
+      description: Requiere el permiso `orders.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales/admin/orders:
+    get:
+      tags:
+        - Pedidos y pagos
+      summary: Pedidos con filtros por estado, pago, envío, fechas y búsqueda
+      description: Requiere el permiso `orders.read`.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: paymentStatus
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: shippingStatus
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: method
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: queue
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales/admin/orders/export:
+    get:
+      tags:
+        - Pedidos y pagos
+      summary: Exportar pedidos a CSV
+      description: Requiere el permiso `reports.export`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales/admin/orders/{id}:
+    get:
+      tags:
+        - Pedidos y pagos
+      summary: Detalle administrativo con trazabilidad completa
+      description: Requiere el permiso `orders.read`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/sales/admin/orders/{id}/prepare:
+    post:
+      tags:
+        - Pedidos y pagos
+      summary: Pasar a preparación
+      description: Requiere el permiso `orders.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/sales/admin/orders/{id}/dispatch:
+    post:
+      tags:
+        - Entregas
+      summary: Registrar despacho (descuenta existencias una sola vez)
+      description: Requiere el permiso `shipping.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                carrierId:
+                  type: integer
+                trackingNumber:
+                  type: string
+              required:
+                - carrierId
+  /api/sales/admin/orders/{id}/transit:
+    post:
+      tags:
+        - Entregas
+      summary: Marcar en tránsito
+      description: Requiere el permiso `shipping.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/sales/admin/orders/{id}/incident:
+    post:
+      tags:
+        - Entregas
+      summary: Registrar incidencia de entrega
+      description: Requiere el permiso `shipping.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+              required:
+                - description
+  /api/sales/admin/orders/{id}/deliver:
+    post:
+      tags:
+        - Entregas
+      summary: Registrar entrega (y cobro contra entrega)
+      description: Requiere el permiso `shipping.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/sales/admin/orders/{id}/cancel:
+    post:
+      tags:
+        - Pedidos y pagos
+      summary: Cancelar pedido (libera reservas y reembolsa lo pagado)
+      description: Requiere el permiso `orders.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+              required:
+                - reason
+  /api/sales/admin/orders/{id}/refunds:
+    post:
+      tags:
+        - Posventa
+      summary: Reembolso simulado con tope en lo pagado
+      description: Requiere el permiso `refunds.create`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/IdempotencyKey"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                reason:
+                  type: string
+                postSaleRequestId:
+                  type: integer
+              required:
+                - amount
+                - reason
+  /api/sales/admin/payments:
+    get:
+      tags:
+        - Pedidos y pagos
+      summary: Pagos y comprobantes por revisar
+      description: Requiere el permiso `payments.review`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales/admin/payments/{id}/review:
+    post:
+      tags:
+        - Pedidos y pagos
+      summary: Aprobar o rechazar una transferencia
+      description: Requiere el permiso `payments.review`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  enum:
+                    - APROBAR
+                    - RECHAZAR
+                note:
+                  type: string
+              required:
+                - decision
+  /api/sales/admin/shipments:
+    get:
+      tags:
+        - Entregas
+      summary: Envíos y su estado
+      description: Requiere el permiso `orders.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales/admin/carriers:
+    get:
+      tags:
+        - Entregas
+      summary: Transportistas
+      description: Requiere el permiso `orders.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Entregas
+      summary: Crear transportista
+      description: Requiere el permiso `shipping.config`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/sales/admin/carriers/{id}:
+    put:
+      tags:
+        - Entregas
+      summary: Editar transportista
+      description: Requiere el permiso `shipping.config`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/sales/admin/shipping/zones/{id}:
+    put:
+      tags:
+        - Entregas
+      summary: Cobertura y tarifa de un departamento
+      description: Requiere el permiso `shipping.config`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/sales/admin/post-sale:
+    get:
+      tags:
+        - Posventa
+      summary: Solicitudes de cambio, devolución y reclamo
+      description: Requiere el permiso `postsale.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/sales/admin/post-sale/{id}:
+    get:
+      tags:
+        - Posventa
+      summary: Detalle de solicitud con historial
+      description: Requiere el permiso `postsale.read`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/sales/admin/post-sale/{id}/status:
+    post:
+      tags:
+        - Posventa
+      summary: Revisar, aprobar, rechazar o cerrar
+      description: Requiere el permiso `postsale.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to:
+                  type: string
+                  enum:
+                    - EN_REVISION
+                    - APROBADA
+                    - RECHAZADA
+                    - CERRADA
+                note:
+                  type: string
+              required:
+                - to
+  /api/sales/admin/post-sale/{id}/receive:
+    post:
+      tags:
+        - Posventa
+      summary: Registrar recepción de prendas y su condición (reintegro al inventario)
+      description: Requiere el permiso `postsale.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/sales/admin/post-sale/{id}/resolve:
+    post:
+      tags:
+        - Posventa
+      summary: Resolver con reembolso, cambio o respuesta
+      description: Requiere el permiso `postsale.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/sales/admin/products/{productId}/sales:
+    get:
+      tags:
+        - Pedidos y pagos
+      summary: Historial de ventas de un producto
+      description: Requiere el permiso `orders.read`.
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/sales/admin/promotions:
+    get:
+      tags:
+        - Promociones
+      summary: Promociones y cupones
+      description: Requiere el permiso `promotions.manage`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Promociones
+      summary: Crear promoción o cupón
+      description: Requiere el permiso `promotions.manage`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/sales/admin/promotions/{id}:
+    put:
+      tags:
+        - Promociones
+      summary: Editar promoción
+      description: Requiere el permiso `promotions.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/sales/admin/promotions/{id}/active:
+    post:
+      tags:
+        - Promociones
+      summary: Activar o desactivar
+      description: Requiere el permiso `promotions.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active:
+                  type: boolean
+              required:
+                - active
+  /api/catalog/admin/products:
+    get:
+      tags:
+        - Catálogo (administración)
+      summary: Productos con filtros
+      description: Requiere el permiso `catalog.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Catálogo (administración)
+      summary: Crear producto con variantes
+      description: Requiere el permiso `catalog.manage`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/catalog/admin/products/{id}:
+    get:
+      tags:
+        - Catálogo (administración)
+      summary: Detalle con variantes, imágenes y auditoría
+      description: Requiere el permiso `catalog.read`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - Catálogo (administración)
+      summary: Editar producto
+      description: Requiere el permiso `catalog.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags:
+        - Catálogo (administración)
+      summary: Eliminar producto sin movimientos (si tiene historial se archiva)
+      description: Requiere el permiso `catalog.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/catalog/admin/products/{id}/status:
+    post:
+      tags:
+        - Catálogo (administración)
+      summary: Publicar, ocultar o archivar
+      description: Requiere el permiso `catalog.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/catalog/admin/products/{id}/variants:
+    post:
+      tags:
+        - Catálogo (administración)
+      summary: Agregar variantes (talla × color)
+      description: Requiere el permiso `catalog.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/catalog/admin/variants/{id}:
+    put:
+      tags:
+        - Catálogo (administración)
+      summary: Precio propio y activación de una variante
+      description: Requiere el permiso `catalog.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/catalog/admin/products/{id}/images:
+    post:
+      tags:
+        - Catálogo (administración)
+      summary: Subir imágenes (validación por firma, re-codificación a WebP)
+      description: Requiere el permiso `catalog.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                colorId:
+                  type: integer
+              required:
+                - images
+  /api/catalog/admin/products/{id}/images/order:
+    put:
+      tags:
+        - Catálogo (administración)
+      summary: Reordenar imágenes
+      description: Requiere el permiso `catalog.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/catalog/admin/images/{id}:
+    put:
+      tags:
+        - Catálogo (administración)
+      summary: Asignar color o texto alternativo a una imagen
+      description: Requiere el permiso `catalog.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags:
+        - Catálogo (administración)
+      summary: Eliminar imagen
+      description: Requiere el permiso `catalog.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/catalog/admin/categories:
+    get:
+      tags:
+        - Catálogo (administración)
+      summary: Categorías
+      description: Requiere el permiso `catalog.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Catálogo (administración)
+      summary: Crear categoría
+      description: Requiere el permiso `catalog.manage`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/catalog/admin/categories/{id}:
+    put:
+      tags:
+        - Catálogo (administración)
+      summary: Editar categoría
+      description: Requiere el permiso `catalog.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/catalog/admin/categories/{id}/image:
+    post:
+      tags:
+        - Catálogo (administración)
+      summary: Imagen de categoría
+      description: Requiere el permiso `catalog.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/catalog/admin/colors:
+    post:
+      tags:
+        - Catálogo (administración)
+      summary: Crear color
+      description: Requiere el permiso `catalog.manage`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/catalog/admin/size-guides:
+    get:
+      tags:
+        - Catálogo (administración)
+      summary: Guías de tallas
+      description: Requiere el permiso `catalog.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/catalog/admin/size-guides/{id}:
+    put:
+      tags:
+        - Catálogo (administración)
+      summary: Editar guía de tallas
+      description: Requiere el permiso `catalog.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/catalog/admin/settings:
+    get:
+      tags:
+        - Configuración
+      summary: Configuración de la tienda
+      description: Requiere el permiso `settings.manage`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/catalog/admin/settings/{key}:
+    put:
+      tags:
+        - Configuración
+      summary: Guardar una sección de configuración
+      description: Requiere el permiso `settings.manage`.
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/catalog/admin/policies:
+    get:
+      tags:
+        - Configuración
+      summary: Políticas y sus versiones
+      description: Requiere el permiso `settings.manage`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/catalog/admin/policies/{slug}:
+    post:
+      tags:
+        - Configuración
+      summary: Publicar nueva versión de una política
+      description: Requiere el permiso `settings.manage`.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/inventory/stock:
+    get:
+      tags:
+        - Inventario
+      summary: Existencias por variante (físico, reservado, disponible, mínimo)
+      description: Requiere el permiso `inventory.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/inventory/stock/summary:
+    get:
+      tags:
+        - Inventario
+      summary: Totales y alertas
+      description: Requiere el permiso `inventory.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/inventory/stock/{variantId}/min:
+    put:
+      tags:
+        - Inventario
+      summary: Existencia mínima de una variante
+      description: Requiere el permiso `inventory.move`.
+      parameters:
+        - name: variantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/inventory/alerts:
+    get:
+      tags:
+        - Inventario
+      summary: Variantes bajo el mínimo
+      description: Requiere el permiso `inventory.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/inventory/meta:
+    get:
+      tags:
+        - Inventario
+      summary: Tipos de movimiento disponibles
+      description: Requiere el permiso `inventory.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/inventory/movements:
+    get:
+      tags:
+        - Inventario
+      summary: Movimientos (kardex general) con filtros
+      description: Requiere el permiso `inventory.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Inventario
+      summary: Registrar entrada, salida o ajuste (idempotente)
+      description: Requiere el permiso `inventory.move`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                variantId:
+                  type: integer
+                type:
+                  type: string
+                  enum:
+                    - ENTRADA_AJUSTE
+                    - SALIDA_AJUSTE
+                    - SALIDA_DANIO
+                    - SALIDA_PERDIDA
+                    - SALIDA_DEVOLUCION_PROVEEDOR
+                    - INVENTARIO_INICIAL
+                quantity:
+                  type: integer
+                reason:
+                  type: string
+                documentRef:
+                  type: string
+                supplierId:
+                  type: integer
+                unitCost:
+                  type: number
+              required:
+                - variantId
+                - type
+                - quantity
+                - reason
+  /api/inventory/movements/export:
+    get:
+      tags:
+        - Inventario
+      summary: Exportar movimientos a CSV
+      description: Requiere el permiso `reports.export`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/inventory/movements/{id}/correct:
+    post:
+      tags:
+        - Inventario
+      summary: Corregir un movimiento con un movimiento inverso (nunca se edita)
+      description: Requiere el permiso `inventory.move`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/inventory/kardex/{variantId}:
+    get:
+      tags:
+        - Inventario
+      summary: Kardex de una variante con saldos
+      description: Requiere el permiso `inventory.read`.
+      parameters:
+        - name: variantId
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/inventory/products/{productId}/stock:
+    get:
+      tags:
+        - Inventario
+      summary: Existencias de un producto
+      description: Requiere el permiso `inventory.read`.
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/inventory/products/{productId}/purchases:
+    get:
+      tags:
+        - Inventario
+      summary: Historial de compras de un producto
+      description: Requiere el permiso `inventory.read`.
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/inventory/initial-stock:
+    post:
+      tags:
+        - Inventario
+      summary: Inventario inicial de variantes nuevas
+      description: Requiere el permiso `inventory.move`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/inventory/purchases:
+    get:
+      tags:
+        - Compras a proveedores
+      summary: Compras registradas
+      description: Requiere el permiso `inventory.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Compras a proveedores
+      summary: Registrar compra (genera entradas al kardex)
+      description: Requiere el permiso `suppliers.manage`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/inventory/purchases/{id}:
+    get:
+      tags:
+        - Compras a proveedores
+      summary: Detalle de compra
+      description: Requiere el permiso `inventory.read`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/inventory/purchases/{id}/void:
+    post:
+      tags:
+        - Compras a proveedores
+      summary: Anular compra con movimientos inversos
+      description: Requiere el permiso `suppliers.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/inventory/suppliers:
+    get:
+      tags:
+        - Compras a proveedores
+      summary: Proveedores
+      description: Requiere el permiso `inventory.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Compras a proveedores
+      summary: Crear proveedor
+      description: Requiere el permiso `suppliers.manage`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/inventory/suppliers/{id}:
+    put:
+      tags:
+        - Compras a proveedores
+      summary: Editar proveedor
+      description: Requiere el permiso `suppliers.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/analytics/dashboard:
+    get:
+      tags:
+        - Reportes
+      summary: Indicadores del panel con comparación contra el período anterior
+      description: Requiere el permiso `dashboard.view`.
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/reports/sales:
+    get:
+      tags:
+        - Reportes
+      summary: Ventas por día, semana o mes
+      description: Requiere el permiso `reports.read`.
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: group
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - json
+              - csv
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/reports/products:
+    get:
+      tags:
+        - Reportes
+      summary: Productos más y menos vendidos
+      description: Requiere el permiso `reports.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/reports/dimensions:
+    get:
+      tags:
+        - Reportes
+      summary: Ventas por categoría, talla, color, departamento y método de pago
+      description: Requiere el permiso `reports.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/reports/discounts:
+    get:
+      tags:
+        - Reportes
+      summary: Efecto de promociones y cupones
+      description: Requiere el permiso `reports.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/reports/returns:
+    get:
+      tags:
+        - Reportes
+      summary: Cambios, devoluciones y reembolsos
+      description: Requiere el permiso `reports.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/reports/inventory:
+    get:
+      tags:
+        - Reportes
+      summary: Rotación, valor del inventario y existencias críticas
+      description: Requiere el permiso `reports.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/audit:
+    get:
+      tags:
+        - Auditoría
+      summary: Bitácora inmutable con filtros
+      description: Requiere el permiso `audit.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/audit/meta:
+    get:
+      tags:
+        - Auditoría
+      summary: Servicios, acciones y entidades registradas
+      description: Requiere el permiso `audit.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/audit/export:
+    get:
+      tags:
+        - Auditoría
+      summary: Exportar bitácora a CSV
+      description: Requiere el permiso `audit.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/errors:
+    get:
+      tags:
+        - Auditoría
+      summary: Errores técnicos por identificador
+      description: Requiere el permiso `audit.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/ai/history:
+    get:
+      tags:
+        - Inteligencia artificial
+      summary: Historial semanal por categoría usado por el modelo
+      description: Requiere el permiso `ai.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/ai/history/refresh:
+    post:
+      tags:
+        - Inteligencia artificial
+      summary: Recalcular historial semanal
+      description: Requiere el permiso `ai.train`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/analytics/ai/train:
+    post:
+      tags:
+        - Inteligencia artificial
+      summary: Entrenar y evaluar una nueva versión (proceso aparte)
+      description: Requiere el permiso `ai.train`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/analytics/ai/models:
+    get:
+      tags:
+        - Inteligencia artificial
+      summary: Versiones del modelo con período, variables y métricas
+      description: Requiere el permiso `ai.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/analytics/ai/models/{id}:
+    get:
+      tags:
+        - Inteligencia artificial
+      summary: Detalle de una versión (MAE por categoría, parámetros)
+      description: Requiere el permiso `ai.read`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/analytics/ai/forecast:
+    get:
+      tags:
+        - Inteligencia artificial
+      summary: Estimación de unidades de la siguiente semana por categoría
+      description: Requiere el permiso `ai.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/auth/admin/users:
+    get:
+      tags:
+        - Usuarios y roles
+      summary: Usuarios con filtros
+      description: Requiere el permiso `users.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Usuarios y roles
+      summary: Crear usuario interno con contraseña temporal
+      description: Requiere el permiso `users.manage`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/auth/admin/users/{id}:
+    get:
+      tags:
+        - Usuarios y roles
+      summary: Detalle con roles, eventos de seguridad y auditoría
+      description: Requiere el permiso `users.read`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - Usuarios y roles
+      summary: Editar usuario y roles
+      description: Requiere el permiso `users.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/auth/admin/users/{id}/status:
+    post:
+      tags:
+        - Usuarios y roles
+      summary: Activar o desactivar (revoca sesiones)
+      description: Requiere el permiso `users.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/auth/admin/users/{id}/unlock:
+    post:
+      tags:
+        - Usuarios y roles
+      summary: Desbloquear tras intentos fallidos
+      description: Requiere el permiso `users.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/auth/admin/users/{id}/revoke-sessions:
+    post:
+      tags:
+        - Usuarios y roles
+      summary: Cerrar todas las sesiones del usuario
+      description: Requiere el permiso `users.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/auth/admin/roles:
+    get:
+      tags:
+        - Usuarios y roles
+      summary: Roles con sus permisos
+      description: Requiere el permiso `roles.manage`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags:
+        - Usuarios y roles
+      summary: Crear rol
+      description: Requiere el permiso `roles.manage`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/auth/admin/roles/{id}/permissions:
+    put:
+      tags:
+        - Usuarios y roles
+      summary: Asignar permisos a un rol
+      description: Requiere el permiso `roles.manage`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/auth/admin/permissions:
+    get:
+      tags:
+        - Usuarios y roles
+      summary: Catálogo de permisos
+      description: Requiere el permiso `roles.manage`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/auth/admin/security-events:
+    get:
+      tags:
+        - Auditoría
+      summary: Eventos de seguridad (inicios de sesión, bloqueos, recuperaciones)
+      description: Requiere el permiso `audit.read`.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Correcto
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token de acceso emitido por el proveedor OIDC (audiencia urn:exclusive:api).
+    oidc:
+      type: openIdConnect
+      openIdConnectUrl: /oidc/.well-known/openid-configuration
+  parameters:
+    IdempotencyKeyRequired:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Llave única de la compra (UUID). Repetir la confirmación con la misma llave devuelve el mismo pedido (RNF-09).
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 80
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Llave única por operación (UUID). Repetir la solicitud con la misma llave devuelve el mismo resultado sin duplicar la operación (RNF-09).
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 80
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: CONFLICT
+            message:
+              type: string
+              example: Algunos productos ya no tienen existencias suficientes.
+            details:
+              description: Errores por campo (validación) o datos adicionales
+            errorId:
+              type: string
+              description: "Solo en errores 500: identificador para localizar el fallo en Auditoría → Errores técnicos (RNF-17)"
+              example: 9F3A2C1B
+        requestId:
+          type: string
+          description: Identificador de la solicitud (trazabilidad entre servicios)
+  responses:
+    BadRequest:
+      description: Datos inválidos (validación del servidor)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Sin sesión o token vencido/revocado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Forbidden:
+      description: El rol no tiene el permiso requerido
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: No existe o no pertenece al usuario
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: "Regla de negocio: existencias, transición de estado no permitida, límite de cupón…"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
