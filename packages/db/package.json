@@ -1,0 +1,15 @@
+{
+  "name": "@exclusive/db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^6.19.3",
+    "@prisma/client": "6.19.3",
+    "pg": "^8.23.1"
+  }
+}

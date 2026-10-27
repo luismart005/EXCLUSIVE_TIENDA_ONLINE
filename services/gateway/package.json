@@ -1,0 +1,19 @@
+{
+  "name": "@exclusive/gateway",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --disable-warning=DEP0060 --watch-path=src --watch-path=../../packages/common/src src/index.js",
+    "start": "node --disable-warning=DEP0060 src/index.js --prod"
+  },
+  "dependencies": {
+    "@exclusive/common": "1.0.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "http-proxy-middleware": "3.0.5",
+    "swagger-ui-express": "^5.0.1",
+    "yaml": "^2.8.1"
+  }
+}
