@@ -31,6 +31,7 @@ escuchan solo en `127.0.0.1`, así que no son accesibles desde otros equipos de 
 | 3️⃣ | ⚙️ **Microservicios** | Autenticación, catálogo, inventario, ventas y analítica | Node.js 20.19+ (recomendado 22), Express 5, oidc-provider, sharp, pdfkit, TensorFlow.js |
 | 4️⃣ | 🗄️ **Datos** | Base de datos, imágenes, comprobantes, registros y respaldos | PostgreSQL 14+, sistema de archivos |
 | 5️⃣ | 🔐 **Seguridad** | Cómo OAuth 2.0 y OpenID Connect protegen todas las capas anteriores | oidc-provider, oidc-client-ts, jose, bcrypt |
+| 6️⃣ | 🤖 **Inteligencia artificial** | Predicción de las ventas de la próxima semana por categoría | TensorFlow.js |
 
 ---
 
@@ -348,7 +349,7 @@ Explicación completa con tokens reales decodificados y respuestas de error: [oa
 
 ---
 
-## 🤖 Inteligencia artificial
+## 6️⃣ 🤖 Inteligencia artificial
 
 1. **Historial semanal:** suma por categoría las unidades vendidas cada semana (lunes a domingo), restando devoluciones y sin contar cancelaciones.
 2. **Entrenamiento** en un proceso aparte con **TensorFlow.js**: un conjunto de 5 redes neuronales pequeñas, que usan las 4 semanas anteriores, la época del año, la tendencia y la categoría.
