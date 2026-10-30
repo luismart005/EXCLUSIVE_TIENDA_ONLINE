@@ -4,6 +4,8 @@ Resumen de los controles de seguridad de Exclusive y de cómo se verifican.
 
 ## Autenticación: OAuth 2.0 + OpenID Connect
 
+Explicación paso a paso, con tokens reales decodificados y diagramas: [oauth-openid.md](oauth-openid.md).
+
 El **auth-service** es un proveedor OpenID Connect certificado (biblioteca `oidc-provider`), publicado en
 `/oidc`. Su configuración pública está en `http://localhost:4000/oidc/.well-known/openid-configuration`.
 
@@ -40,7 +42,8 @@ sequenceDiagram
 
 Cada token de acceso lleva el claim `sv` (versión de sesión del usuario). Los servicios comparan ese valor con el de
 la base de datos en cada solicitud (caché de 10 segundos). Por eso **cerrar sesión en todos los dispositivos,
-cambiar la contraseña, restablecerla o desactivar la cuenta** invalida inmediatamente los tokens ya emitidos.
+cambiar la contraseña, restablecerla o desactivar la cuenta** invalida los tokens ya emitidos: de inmediato en el auth-service y
+en un máximo de 10 segundos en los demás servicios, aunque al token todavía le queden minutos de vida.
 Prueba: `tests/integration/authorization.test.js`.
 
 ### Protección del acceso (RNF-04)

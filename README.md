@@ -18,6 +18,10 @@ gráficas, inteligencia artificial, auditoría, usuarios y roles).
 
 > Pagos, facturación y envíos son **simulados** ("SIMULACIÓN — SIN VALIDEZ FISCAL"). Los datos son ficticios.
 
+![Arquitectura web de Exclusive](docs/img/arquitectura-web.svg)
+
+Explicación completa de cada capa: [docs/arquitectura-web.md](docs/arquitectura-web.md).
+
 ---
 
 ## Contenido
@@ -305,7 +309,9 @@ Los registros técnicos de cada servicio están en la carpeta `logs/`. Si un err
 
 | Documento | Contenido |
 |---|---|
+| [docs/arquitectura-web.md](docs/arquitectura-web.md) | Diagrama de la arquitectura web y explicación de cada capa, servicio y flujo |
 | [docs/arquitectura.md](docs/arquitectura.md) | Microservicios, comunicación, base de datos, saga de compra, ambientes |
+| [docs/oauth-openid.md](docs/oauth-openid.md) | Cómo funcionan OAuth 2.0 y OpenID Connect en el sistema: flujo PKCE, tokens, renovación, permisos, revocación y tokens entre servicios |
 | [docs/seguridad.md](docs/seguridad.md) | OAuth 2.0 / OIDC, roles y permisos, protección de acceso, archivos, auditoría inmutable, HTTPS |
 | [docs/reglas-de-negocio.md](docs/reglas-de-negocio.md) | Las 15 reglas, redondeo monetario, promociones, estados, pagos, inventario, posventa |
 | [docs/inteligencia-artificial.md](docs/inteligencia-artificial.md) | Historial semanal, variables, modelo, evaluación y trazabilidad |
